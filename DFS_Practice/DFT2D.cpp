@@ -64,8 +64,31 @@ BYTE clip_d(double a)
 
 void DFT_2D(double **dReal_2D, double **dImag_2D, int nHeight, int nWidth, int DFT_ID)
 {
-
+	double** tempReal_2D = MemAlloc2D<double>(HEIGHT, WIDTH, 0);
+	double** tempImag_2D = MemAlloc2D<double>(HEIGHT, WIDTH, 0);
+	for (int h = 0; h < nHeight; h++)
+	{
+		DFT_1D(dReal_2D[h], dImag_2D[h], nWidth, DFT_ID);
+	}
+	for (int h = 0; h < nHeight; h++)
+	{
+		for (int w = 0; w < nWidth; w++)
+		{
+			tempReal_2D[h][w] = dReal_2D[w][h];
+			tempImag_2D[h][w] = dImag_2D[w][h];
+		}
+	}
+	for (int h = 0; h < nHeight; h++)
+	{
+		memcpy(dReal_2D[h], tempReal_2D[h], sizeof(double) * nWidth);
+		memcpy(dImag_2D[h], tempImag_2D[h], sizeof(double) * nWidth);
+	}
+	for (int h = 0; h < nHeight; h++)
+	{
+		DFT_1D(dReal_2D[h], dImag_2D[h], nWidth, DFT_ID);
+	}
 }
+
 void DFT_1D(double* dReal_1D, double* dImag_1D, int nLength, int DFT_ID)
 {
 	double dArg, dCosArg, dSinArg;
@@ -187,7 +210,96 @@ template <typename T> void SetCenterDC(T** arr2D, int nHeight, int nWidth)
 
 	MemFree2D<T>(arr2DTemp, nHeight);
 }
+void LowPassIdeal(int nHeight, int nWidth, int nThres, double** dFilter)
+{
+	int w2 = nWidth / 2;
+	int h2 = nHeight / 2;
+	int temp_h, temp_w;
 
+	for (int j = 0; j < nHeight; j++)
+	{
+		for (int i = 0; i < nWidth; i++)
+		{
+			temp_w = i + w2;
+			temp_h = j + h2;
+
+			if (temp_w >= w2) temp_w -= w2;
+			if (temp_h >= h2) temp_h -= h2;
+
+
+			double check = sqrt((double)((temp_h - h2)*(temp_h - h2)) + ((temp_w - w2)*(temp_w - w2)));
+
+			if (check > nThres)
+			{
+				dFilter[j][i] = 0;
+			}
+			else
+				dFilter[j][i] = 1;
+
+		}
+	}
+}
+
+void LowPassGaussian(int nHeight, int nWidth, int nThres, double** dFilter)
+{
+	int w2 = nWidth / 2;
+	int h2 = nHeight / 2;
+	int temp_h, temp_w;
+
+	double dist2, hval;
+
+	for (int j = 0; j < nHeight; j++)
+	{
+		for (int i = 0; i < nWidth; i++)
+		{
+			temp_w = i + w2;
+			temp_h = j + h2;
+
+			if (temp_w >= w2) temp_w -= w2;
+			if (temp_h >= h2) temp_h -= h2;
+
+
+			dist2 = (double)((temp_h - h2)*(temp_h - h2)) + ((temp_w - w2)*(temp_w - w2));
+
+			hval = exp(-dist2 / (2 * nThres*nThres));
+
+			dFilter[j][i] = hval;
+
+		}
+	}
+}
+
+void LowPassButterworth(int nHeight, int nWidth, int nThres, double** dFilter)
+{
+	int w2 = nWidth / 2;
+	int h2 = nHeight / 2;
+	int temp_h, temp_w;
+
+	double hval;
+	int n = 1; //order
+
+	for (int j = 0; j < nHeight; j++)
+	{
+		for (int i = 0; i < nWidth; i++)
+		{
+			temp_w = i + w2;
+			temp_h = j + h2;
+
+			if (temp_w >= w2) temp_w -= w2;
+			if (temp_h >= h2) temp_h -= h2;
+
+
+			double check = sqrt((double)((temp_h - h2)*(temp_h - h2)) + ((temp_w - w2)*(temp_w - w2)));
+
+			hval = 1.0 + pow((check / nThres), 2 * n);
+
+			hval = 1 / hval;
+
+			dFilter[j][i] = hval;
+
+		}
+	}
+}
 void LowPassFilter(double** dReal2D, double** dImag2D, int nHeight, int nWidth, int nThres, int nFilterType)
 {
 	int nHalf_H = nHeight / 2, nHalf_W = nWidth / 2;
@@ -201,12 +313,15 @@ void LowPassFilter(double** dReal2D, double** dImag2D, int nHeight, int nWidth, 
 	switch (nFilterType)
 	{
 	case LPF_IDEAL:
+		LowPassIdeal(nHeight, nWidth, nThres, dFilter);
 
 		break;
 	case LPF_BUTTERWORTH:
+		LowPassButterworth(nHeight, nWidth, nThres, dFilter);
 
 		break;
 	case LPF_GAUSSIAN:
+		LowPassGaussian(nHeight, nWidth, nThres, dFilter);
 
 		break;
 	}

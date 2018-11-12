@@ -49,8 +49,8 @@ void main()
 
 	// Filter Processing
 
-	//LowPassFilter(dReal_2D, dImag_2D, HEIGHT, WIDTH, 50, LPF_IDEAL);
-	//HighPassFilter(dReal_2D, dImag_2D, HEIGHT, WIDTH, 50, HPF_IDEAL);
+	LowPassFilter(dReal_2D, dImag_2D, HEIGHT, WIDTH, 30, LPF_IDEAL);
+	/*HighPassFilter(dReal_2D, dImag_2D, HEIGHT, WIDTH, 100, HPF_IDEAL);*/
 
 	// IDFT
 
